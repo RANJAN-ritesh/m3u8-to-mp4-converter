@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M3U8 to MP4 Converter</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667eea' stroke-width='2'><rect x='2' y='2' width='20' height='20' rx='2.18' ry='2.18'/><line x1='7' y1='2' x2='7' y2='22'/><line x1='17' y1='2' x2='17' y2='22'/><line x1='2' y1='12' x2='22' y2='12'/></svg>">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                    <line x1="7" y1="2" x2="7" y2="22"></line>
+                    <line x1="17" y1="2" x2="17" y2="22"></line>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <line x1="2" y1="7" x2="7" y2="7"></line>
+                    <line x1="2" y1="17" x2="7" y2="17"></line>
+                    <line x1="17" y1="17" x2="22" y2="17"></line>
+                    <line x1="17" y1="7" x2="22" y2="7"></line>
+                </svg>
+                Video Converter
+            </h1>
+            <p>Convert M3U8 video links to MP4 format</p>
+        </header>
+
+        <main>
+            <!-- Upload Section -->
+            <div id="upload-section" class="card">
+                <h2>Add Your Videos</h2>
+                <p class="instruction">
+                    CSV Format: <strong>Course, Title, Topic, Link</strong> (one video per row)
+                </p>
+
+                <!-- Toggle between Upload and Paste -->
+                <div class="input-toggle">
+                    <button id="toggle-upload" class="toggle-btn active">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Upload File
+                    </button>
+                    <button id="toggle-paste" class="toggle-btn">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                        Paste CSV
+                    </button>
+                </div>
+
+                <!-- Upload Area -->
+                <div id="upload-mode" class="input-mode">
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-content">
+                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p class="upload-text">Click to upload or drag and drop</p>
+                            <p class="upload-hint">CSV files only</p>
+                            <input type="file" id="file-input" accept=".csv" hidden>
+                        </div>
+                    </div>
+
+                    <div id="file-info" class="file-info" style="display: none;">
+                        <span id="file-name"></span>
+                        <button id="remove-file" class="btn-remove">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Paste Area -->
+                <div id="paste-mode" class="input-mode" style="display: none;">
+                    <textarea
+                        id="csv-textarea"
+                        class="csv-textarea"
+                        placeholder="Paste your CSV here...&#10;&#10;Example:&#10;Course,Title,Topic,Link&#10;1,JavaScript 101,Programming Foundation with JS,https://video.gumlet.io/.../main.m3u8&#10;2,JavaScript 101,Mathematical Operator,https://video.gumlet.io/.../main.m3u8"
+                        rows="10"></textarea>
+                    <div class="paste-info">
+                        <span id="paste-count">0 videos detected</span>
+                    </div>
+                </div>
+
+                <button id="convert-btn" class="btn btn-primary" disabled>
+                    Start Conversion
+                </button>
+            </div>
+
+            <!-- Progress Section -->
+            <div id="progress-section" class="card" style="display: none;">
+                <h2>Conversion Progress</h2>
+
+                <div class="progress-info">
+                    <div class="progress-text">
+                        <span id="current-video">Preparing...</span>
+                    </div>
+                    <div class="progress-count">
+                        <span id="progress-count">0/0</span>
+                    </div>
+                </div>
+
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+
+                <div id="status-message" class="status-message"></div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results-section" class="card" style="display: none;">
+                <h2>
+                    <svg class="inline-icon success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Conversion Complete!
+                </h2>
+
+                <div class="summary">
+                    <div class="summary-item success">
+                        <span class="summary-label">Successful</span>
+                        <span id="success-count" class="summary-value">0</span>
+                    </div>
+                    <div class="summary-item failed">
+                        <span class="summary-label">Failed</span>
+                        <span id="failed-count" class="summary-value">0</span>
+                    </div>
+                </div>
+
+                <div id="completed-files" class="files-list"></div>
+
+                <div class="actions">
+                    <button id="download-all-btn" class="btn btn-primary">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="8 17 12 21 16 17"></polyline>
+                            <line x1="12" y1="12" x2="12" y2="21"></line>
+                            <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"></path>
+                        </svg>
+                        Download All Videos
+                    </button>
+                    <button id="new-conversion-btn" class="btn btn-secondary">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                        New Conversion
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Powered by FFmpeg • Simple & Fast</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
