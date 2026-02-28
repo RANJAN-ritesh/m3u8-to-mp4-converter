@@ -5,11 +5,11 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: #0a0a0a;
     min-height: 100vh;
     padding: 20px;
-    color: #333;
+    color: #ededed;
 }
 
 .container {
@@ -19,7 +19,7 @@ body {
 
 header {
     text-align: center;
-    color: white;
+    color: #ededed;
     margin-bottom: 40px;
     padding: 20px;
 }
@@ -27,47 +27,116 @@ header {
 header h1 {
     font-size: 2.5rem;
     margin-bottom: 10px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 12px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
 }
 
 .header-icon {
     width: 48px;
     height: 48px;
-    stroke: white;
+    stroke: #ededed;
 }
 
 header p {
     font-size: 1.1rem;
-    opacity: 0.95;
+    color: #a1a1aa;
 }
 
 .card {
-    background: white;
-    border-radius: 16px;
+    background: #171717;
+    border: 1px solid #262626;
+    border-radius: 12px;
     padding: 32px;
     margin-bottom: 24px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 .card h2 {
     margin-bottom: 20px;
-    color: #333;
+    color: #ededed;
     font-size: 1.5rem;
-}
-
-.instruction {
-    color: #666;
-    margin-bottom: 24px;
-    line-height: 1.6;
-}
-
-.instruction strong {
-    color: #667eea;
     font-weight: 600;
+}
+
+.template-download-container {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.template-link {
+    display: inline-flex;
+    align-items: center;
+    color: #ededed;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 8px 16px;
+    background: #262626;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    border: 1px solid #404040;
+}
+
+.template-link:hover {
+    background: #404040;
+    border-color: #52525b;
+}
+
+/* Advanced Settings */
+.advanced-settings-panel {
+    background: #0a0a0a;
+    border: 1px solid #262626;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+
+.advanced-settings-panel summary {
+    padding: 16px;
+    font-weight: 500;
+    color: #ededed;
+    cursor: pointer;
+    user-select: none;
+    background: #171717;
+    transition: background 0.2s;
+}
+
+.advanced-settings-panel summary:hover {
+    background: #262626;
+}
+
+.advanced-content {
+    padding: 16px;
+    border-top: 1px solid #262626;
+}
+
+.setting-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.setting-group label {
+    color: #a1a1aa;
+    font-size: 0.95rem;
+}
+
+.setting-group input {
+    background: #171717;
+    border: 1px solid #404040;
+    color: #ededed;
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 60px;
+    text-align: right;
+}
+
+.setting-group input:focus {
+    outline: none;
+    border-color: #ededed;
 }
 
 /* Input Toggle */
@@ -75,9 +144,10 @@ header p {
     display: flex;
     gap: 8px;
     margin-bottom: 24px;
-    background: #f1f3f5;
+    background: #0a0a0a;
     padding: 4px;
     border-radius: 8px;
+    border: 1px solid #262626;
 }
 
 .toggle-btn {
@@ -89,21 +159,23 @@ header p {
     font-size: 0.95rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
-    color: #666;
+    transition: all 0.2s ease;
+    color: #a1a1aa;
 }
 
 .toggle-btn.active {
-    background: white;
-    color: #667eea;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    background: #262626;
+    color: #ededed;
+    border: 1px solid #404040;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-btn:hover:not(.active) {
-    color: #333;
+    color: #ededed;
 }
 
-.btn-icon {
+.btn-icon,
+.inline-icon {
     width: 18px;
     height: 18px;
     display: inline-block;
@@ -114,13 +186,10 @@ header p {
 .inline-icon {
     width: 24px;
     height: 24px;
-    display: inline-block;
-    vertical-align: middle;
-    margin-right: 8px;
 }
 
 .success-icon {
-    stroke: #51cf66;
+    stroke: #4ade80;
 }
 
 .input-mode {
@@ -129,23 +198,20 @@ header p {
 
 /* Upload Area */
 .upload-area {
-    border: 3px dashed #ddd;
-    border-radius: 12px;
+    border: 2px dashed #404040;
+    border-radius: 8px;
     padding: 48px 24px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
+    background: #171717;
     margin-bottom: 24px;
 }
 
-.upload-area:hover {
-    border-color: #667eea;
-    background: #f8f9ff;
-}
-
+.upload-area:hover,
 .upload-area.drag-over {
-    border-color: #667eea;
-    background: #f0f3ff;
+    border-color: #a1a1aa;
+    background: #262626;
 }
 
 .upload-content {
@@ -153,21 +219,21 @@ header p {
 }
 
 .upload-icon {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     margin: 0 auto 16px;
-    color: #667eea;
+    color: #a1a1aa;
 }
 
 .upload-text {
     font-size: 1.1rem;
-    color: #333;
+    color: #ededed;
     margin-bottom: 8px;
     font-weight: 500;
 }
 
 .upload-hint {
-    color: #999;
+    color: #71717a;
     font-size: 0.9rem;
 }
 
@@ -176,27 +242,27 @@ header p {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: #f8f9ff;
+    background: #262626;
     padding: 16px 20px;
-    border-radius: 8px;
+    border-radius: 6px;
     margin-bottom: 24px;
-    border-left: 4px solid #667eea;
+    border-left: 3px solid #ededed;
 }
 
 .file-info span {
-    color: #333;
+    color: #ededed;
     font-weight: 500;
 }
 
 .btn-remove {
-    background: #ff6b6b;
+    background: #ef4444;
     color: white;
     border: none;
     width: 28px;
     height: 28px;
-    border-radius: 50%;
+    border-radius: 4px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -210,86 +276,86 @@ header p {
 }
 
 .btn-remove:hover {
-    background: #ff5252;
-    transform: scale(1.1);
+    background: #dc2626;
 }
 
 /* CSV Paste Area */
 .csv-textarea {
     width: 100%;
     padding: 16px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    background: #0a0a0a;
+    color: #ededed;
     font-family: 'Monaco', 'Courier New', monospace;
     font-size: 0.9rem;
     resize: vertical;
     min-height: 200px;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     margin-bottom: 12px;
 }
 
 .csv-textarea:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: #ededed;
 }
 
 .csv-textarea::placeholder {
-    color: #adb5bd;
+    color: #52525b;
 }
 
 .paste-info {
-    background: #f8f9ff;
+    background: #262626;
     padding: 12px 16px;
     border-radius: 6px;
-    border-left: 4px solid #667eea;
+    border-left: 3px solid #ededed;
 }
 
 .paste-info span {
-    color: #667eea;
+    color: #ededed;
     font-weight: 500;
     font-size: 0.95rem;
 }
 
 /* Buttons */
 .btn {
-    padding: 14px 32px;
+    padding: 12px 24px;
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     display: inline-block;
     text-align: center;
 }
 
 .btn-primary {
-    background: #667eea;
-    color: white;
+    background: #ededed;
+    color: #0a0a0a;
     width: 100%;
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: #5568d3;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    background: #ffffff;
 }
 
 .btn-primary:disabled {
-    background: #ccc;
+    background: #262626;
+    color: #52525b;
     cursor: not-allowed;
 }
 
 .btn-secondary {
-    background: #f1f3f5;
-    color: #333;
+    background: #262626;
+    color: #ededed;
+    border: 1px solid #404040;
     width: 100%;
     margin-top: 12px;
 }
 
 .btn-secondary:hover {
-    background: #e9ecef;
+    background: #404040;
 }
 
 /* Progress Section */
@@ -301,39 +367,40 @@ header p {
 }
 
 .progress-text {
-    color: #333;
+    color: #ededed;
     font-weight: 500;
     flex: 1;
 }
 
 .progress-count {
-    color: #667eea;
-    font-weight: 600;
-    font-size: 1.1rem;
+    color: #a1a1aa;
+    font-weight: 500;
+    font-size: 1rem;
 }
 
 .progress-bar {
     width: 100%;
-    height: 12px;
-    background: #f1f3f5;
-    border-radius: 6px;
+    height: 8px;
+    background: #262626;
+    border-radius: 4px;
     overflow: hidden;
     margin-bottom: 16px;
 }
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    background: #ededed;
     width: 0%;
-    transition: width 0.5s ease;
-    border-radius: 6px;
+    transition: width 0.3s ease;
+    border-radius: 4px;
 }
 
 .status-message {
-    color: #666;
+    color: #a1a1aa;
     font-size: 0.95rem;
     padding: 12px;
-    background: #f8f9ff;
+    background: #0a0a0a;
+    border: 1px solid #262626;
     border-radius: 6px;
     text-align: center;
 }
@@ -348,23 +415,23 @@ header p {
 
 .summary-item {
     padding: 20px;
-    border-radius: 8px;
+    border-radius: 6px;
     text-align: center;
+    background: #262626;
+    border: 1px solid #404040;
 }
 
 .summary-item.success {
-    background: #d4f4dd;
-    border-left: 4px solid #51cf66;
+    border-bottom: 2px solid #4ade80;
 }
 
 .summary-item.failed {
-    background: #ffe0e0;
-    border-left: 4px solid #ff6b6b;
+    border-bottom: 2px solid #ef4444;
 }
 
 .summary-label {
     display: block;
-    color: #666;
+    color: #a1a1aa;
     font-size: 0.9rem;
     margin-bottom: 8px;
 }
@@ -372,8 +439,8 @@ header p {
 .summary-value {
     display: block;
     font-size: 2rem;
-    font-weight: bold;
-    color: #333;
+    font-weight: 600;
+    color: #ededed;
 }
 
 /* Files List */
@@ -388,15 +455,15 @@ header p {
     align-items: center;
     justify-content: space-between;
     padding: 16px;
-    background: #f8f9ff;
-    border-radius: 8px;
+    background: #0a0a0a;
+    border: 1px solid #262626;
+    border-radius: 6px;
     margin-bottom: 8px;
     transition: all 0.2s ease;
 }
 
 .file-item:hover {
-    background: #f0f3ff;
-    transform: translateX(4px);
+    border-color: #52525b;
 }
 
 .file-item-info {
@@ -405,30 +472,30 @@ header p {
 
 .file-item-name {
     font-weight: 500;
-    color: #333;
+    color: #ededed;
     display: block;
     margin-bottom: 4px;
 }
 
 .file-item-size {
-    color: #999;
+    color: #a1a1aa;
     font-size: 0.85rem;
 }
 
 .btn-download {
-    padding: 8px 16px;
-    background: #667eea;
-    color: white;
-    border: none;
-    border-radius: 6px;
+    padding: 6px 12px;
+    background: #262626;
+    color: #ededed;
+    border: 1px solid #404040;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 500;
     transition: all 0.2s ease;
 }
 
 .btn-download:hover {
-    background: #5568d3;
+    background: #404040;
 }
 
 .actions {
@@ -440,32 +507,33 @@ header p {
 /* Footer */
 footer {
     text-align: center;
-    color: white;
+    color: #71717a;
     padding: 20px;
-    opacity: 0.9;
     font-size: 0.9rem;
 }
 
 /* Scrollbar */
 .files-list::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
 }
 
 .files-list::-webkit-scrollbar-track {
-    background: #f1f3f5;
-    border-radius: 4px;
+    background: #171717;
 }
 
 .files-list::-webkit-scrollbar-thumb {
-    background: #667eea;
+    background: #404040;
     border-radius: 4px;
 }
 
 /* Loading Animation */
 @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.5;
     }

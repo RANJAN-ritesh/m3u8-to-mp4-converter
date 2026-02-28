@@ -45,6 +45,10 @@ output/
 *.mp4
 *.csv
 
+# Test artifacts
+*.log
+*.pid
+
 # Claude Code (if accidentally added)
 .claude/
 

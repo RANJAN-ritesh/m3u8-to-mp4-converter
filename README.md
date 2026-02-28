@@ -1,147 +1,145 @@
-# M3U8 to MP4 Converter 🎥
+# M3U8 to MP4 Converter
 
-A simple web-based tool to convert M3U8 video links to MP4 format. Perfect for batch converting multiple videos from a CSV file.
+A robust, web-based utility designed for the seamless conversion of M3U8 video streams and local playlists into universally compatible MP4 formats. Optimized for batch processing, the application offers an intuitive interface tailored for speed and efficiency.
 
-## Features
+## Key Features
 
-✅ User-friendly web interface
-✅ **Two input modes:** Upload CSV file OR paste CSV data directly
-✅ Batch conversion from CSV files
-✅ Real-time progress tracking with video counter
-✅ Individual file downloads
-✅ Download all videos as ZIP
-✅ No technical knowledge required
-✅ Auto-detection of video count from pasted data
+- **Intuitive Web Interface**: A clean, accessible frontend that requires no specialized technical knowledge.
+- **Flexible Input Methods**: Support for both uploading CSV files and direct data pasting.
+- **Batch Processing**: Convert multiple videos concurrently using background thread execution.
+- **Advanced Control**: Set maximum concurrent downloads and define quality constraints per stream or globally.
+- **Precision Trimming**: Define precise start and end capabilities to extract specific video segments during conversion.
+- **Local File Support**: Process local `.m3u8` playlists via `file://` scheme definitions.
+- **Real-Time Monitoring**: Live progress tracking and dynamic visual feedback during processing.
+- **Versatile Downloads**: Acquire converted files individually or packaged collectively within a ZIP archive.
 
 ## Prerequisites
 
-Before running the application, make sure you have:
+Before deploying the application, ensure the following dependencies are available on your system:
 
-1. **Python 3.7+** installed
-2. **FFmpeg** installed (already present on your system)
+1. **Python 3.7+**
+2. **FFmpeg** (Must be accessible via the system PATH)
+   - *macOS*: `brew install ffmpeg`
+   - *Ubuntu/Debian*: `sudo apt install ffmpeg`
+   - *Windows*: Download from [ffmpeg.org](https://ffmpeg.org/download.html)
 
-## Quick Start
+## Quick Start Guide
 
-### 1. Install Dependencies
+### 1. Installation
+
+The fastest way to start is using the included initialization script, which automatically creates a virtual environment, installs dependencies, and boots the server:
 
 ```bash
-pip install -r requirements.txt
+chmod +x start.sh
+./start.sh
 ```
 
-### 2. Start the Server
+Alternatively, to manually construct the environment:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+### 2. Launching the Server
+
+Execute the main application script:
 
 ```bash
 python app.py
 ```
 
-The server will start at `http://localhost:8080`
+The server will initialize on `http://localhost:8080` (or `http://localhost:5000` depending on your active port configuration). Navigate to this address in your preferred web browser.
 
-### 3. Open in Browser
+## Usage Instructions
 
-Open your web browser and go to:
-```
-http://localhost:8080
-```
+### Step 1: Prepare the Input Data
 
-## How to Use
+Construct a CSV file targeting the streams you wish to process. The system requires two primary columns, while supporting additional optional parameters for advanced control.
 
-### Step 1: Prepare Your CSV File
+- **session name** (Required): The designated output name for your video.
+- **session link** (Required): The target M3U8 URL or local `file://` path.
+- **Resolution** (Optional): Define stream quality (e.g., `1080p`, `Highest`, `Lowest`).
+- **Start Time** (Optional): Define a trim start point (e.g., `00:00:10`).
+- **End Time** (Optional): Define a trim end point (e.g., `00:02:00`).
 
-Create a CSV file with two columns:
-- **session name**: Name for your video
-- **session link**: The m3u8 URL
-
-Example (`sessions.csv`):
+**Example Formulation (`sessions.csv`):**
 ```csv
-session name,session link
-Intro Video,https://video.gumlet.io/64492c288384bc9176c64c46/685528fac00d01d5374bb81e/main.m3u8
-Tutorial 1,https://video.gumlet.io/another/video/main.m3u8
-Demo Session,https://video.gumlet.io/demo/video/main.m3u8
+session name,session link,Resolution,Start Time,End Time
+Intro Video,https://video.gumlet.io/.../main.m3u8,1080p,00:00:10,00:00:15
+Tutorial 1,https://video.gumlet.io/.../main.m3u8,,,
+Demo Session,file://$(pwd)/local_playlist.m3u8,Lowest,,00:02:00
 ```
 
-### Step 2: Upload & Convert
+### Step 2: Conversion Process
 
-1. Open the web interface
-2. Click the upload area or drag & drop your CSV file
-3. Click "Start Conversion"
-4. Wait for the conversion to complete
+1. Access the web interface.
+2. Provide your input data by either uploading your `.csv` file or pasting the data directly into the provided text area.
+3. (Optional) Expand the **Advanced Settings** panel to define global defaults:
+   - **Default Quality**: Applies to all videos lacking a specific resolution directive in the CSV.
+   - **Concurrent Downloads**: Regulate the number of simultaneous conversion streams (Maximum: 10).
+4. Initiate the process by selecting "Start Conversion".
+5. Maintain the active browser session while the conversions process in the background.
 
-### Step 3: Download
+### Step 3: Retrieval
 
-Once complete, you can:
-- Download individual videos
-- Download all videos as a ZIP file
+Upon completion, navigate to the downloads section to retrieve your MP4 files:
+- Download individual items directly.
+- Download the complete set as a compressed ZIP archive.
 
-## Project Structure
+All processed files are persistently stored within the application's `output/` directory for direct system access.
+
+## Project Architecture
 
 ```
 gumlet/
-├── app.py                      # Flask backend server
-├── convert_m3u8_to_mp4.py     # CLI version (alternative)
-├── requirements.txt            # Python dependencies
-├── sample_sessions.csv         # Example CSV file
+├── app.py                      # Primary Flask backend application
+├── convert_m3u8_to_mp4.py      # Standalone CLI alternative
+├── requirements.txt            # Python environment specifications
+├── start.sh                    # Automated initialization script
 ├── templates/
-│   └── index.html             # Web interface
+│   └── index.html              # Frontend markup
 ├── static/
-│   ├── css/
-│   │   └── style.css          # Styling
-│   └── js/
-│       └── app.js             # Frontend logic
-├── uploads/                    # Uploaded CSV files
-└── output/                     # Converted MP4 files
+│   ├── css/style.css           # Interface styling
+│   └── js/app.js               # Client-side logic and API integration
+├── uploads/                    # Ephemeral storage for uploaded CSV data
+└── output/                     # Persistent storage for converted MP4 files
 ```
 
-## Command Line Alternative
+## Command Line Interface (CLI)
 
-If you prefer the command line, you can use the CLI version:
+Should a headless operation be required, an isolated CLI variant is provided:
 
 ```bash
-python convert_m3u8_to_mp4.py sessions.csv
+python convert_m3u8_to_mp4.py sessions.csv --workers 3 --resolution Highest
 ```
 
-Output files will be saved in the `output/` directory.
+Processed outputs will be deposited in the `output/` directory following identical conventions to the web application.
 
 ## Troubleshooting
 
-### FFmpeg not found
-Make sure FFmpeg is installed and accessible in your PATH:
+### FFmpeg Integration Issues
+Ensure FFmpeg is correctly installed and its executable is registered within your system's PATH variables. Verify its presence using:
 ```bash
 ffmpeg -version
 ```
 
-### Port 5000 already in use
-Edit `app.py` and change the port:
+### Port Conflicts (Address Already In Use)
+If the default port is occupied by another service, modify the binding port directly within `app.py`:
 ```python
-app.run(debug=True, host='0.0.0.0', port=8080)  # Change port here
+app.run(debug=True, host='0.0.0.0', port=8081)  # Modify integer as necessary
 ```
 
-### Conversion fails
-- Check that the m3u8 URLs are accessible
-- Ensure you have a stable internet connection
-- Verify the URLs are valid m3u8 playlists
+### Conversion Failures
+Review the following criteria if a stream fails to process:
+- Confirm target URLs are publicly accessible and syntactically valid M3U8 playlists.
+- Verify system internet connectivity is stable.
+- Ensure adequate disk space is available for the resulting MP4 outputs.
 
-## Technical Details
+## Technical Specifications
 
-- **Backend**: Flask (Python)
-- **Video Processing**: FFmpeg with copy codec (no re-encoding)
-- **Frontend**: Vanilla HTML/CSS/JavaScript
-- **File Format**: MP4 (H.264 video, AAC audio)
-
-## Tips
-
-- The conversion uses `-c copy` which is fast as it doesn't re-encode
-- Each video has a 10-minute timeout limit
-- Maximum CSV file size: 16MB
-- Keep the browser tab open during conversion
-
-## Support
-
-If you encounter any issues, check:
-1. FFmpeg is properly installed
-2. URLs in CSV are valid and accessible
-3. You have sufficient disk space
-4. Internet connection is stable
-
----
-
-**Made with ❤️ for easy video conversion**
+- **Backend Framework**: Python / Flask
+- **Media Engine**: FFmpeg (Utilizing `-c copy` stream copying to circumvent re-encoding overhead)
+- **Frontend Stack**: Vanilla HTML5, CSS3, JavaScript
+- **Output Container**: MP4 (H.264 Video Codec, AAC Audio Codec)

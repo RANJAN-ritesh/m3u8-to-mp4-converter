@@ -19,11 +19,9 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'output'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-# Ensure folders exist
 Path(app.config['UPLOAD_FOLDER']).mkdir(exist_ok=True)
 Path(app.config['OUTPUT_FOLDER']).mkdir(exist_ok=True)
 
-# Global variable to track conversion status
 conversion_status = {
     'is_running': False,
     'current': 0,
@@ -36,26 +34,50 @@ conversion_status = {
 
 
 def sanitize_filename(filename):
-    """Remove or replace characters that are invalid in filenames."""
-    # Remove only truly invalid characters, keep spaces
     filename = re.sub(r'[<>:"/\\|?*]', '', filename)
     filename = filename.strip('. ')
     return filename
 
 
-def convert_m3u8_to_mp4(session_name, m3u8_url, output_dir):
+def convert_m3u8_to_mp4(session_name, m3u8_url, output_dir, resolution=None, start_time=None, end_time=None):
     """Convert a single m3u8 URL to mp4."""
     safe_name = sanitize_filename(session_name)
     output_file = os.path.join(output_dir, f"{safe_name}.mp4")
 
-    cmd = [
-        'ffmpeg',
-        '-i', m3u8_url,
+    cmd = ['ffmpeg']
+
+    if start_time:
+        cmd.extend(['-ss', str(start_time)])
+    if end_time:
+        if start_time:
+            try:
+                def to_sec(t):
+                    parts = list(map(float, str(t).split(':')))
+                    if len(parts) == 3: return parts[0]*3600 + parts[1]*60 + parts[2]
+                    elif len(parts) == 2: return parts[0]*60 + parts[1]
+                    return parts[0]
+                dur = to_sec(end_time) - to_sec(start_time)
+                if dur > 0:
+                    cmd.extend(['-t', str(dur)])
+            except:
+                pass
+        else:
+            cmd.extend(['-to', str(end_time)])
+
+    cmd.extend(['-i', m3u8_url])
+
+    if resolution and resolution.lower() != 'highest':
+        if resolution.lower() == 'lowest':
+            cmd.extend(['-map', 'p:0'])
+        elif 'p' in resolution.lower():
+            pass
+
+    cmd.extend([
         '-c', 'copy',
         '-bsf:a', 'aac_adtstoasc',
         '-y',
         output_file
-    ]
+    ])
 
     try:
         result = subprocess.run(
@@ -70,6 +92,7 @@ def convert_m3u8_to_mp4(session_name, m3u8_url, output_dir):
             file_size = os.path.getsize(output_file) / (1024 * 1024)
             return True, f"{safe_name}.mp4", file_size
         else:
+            print(f"Error for {safe_name}: {result.stderr}")
             return False, safe_name, 0
 
     except subprocess.TimeoutExpired:
@@ -78,35 +101,57 @@ def convert_m3u8_to_mp4(session_name, m3u8_url, output_dir):
         return False, session_name, 0
 
 
-def process_conversions(conversions, output_dir):
-    """Process all conversions in background thread."""
+def process_conversions(conversions, output_dir, max_workers=3):
+    """Process all conversions in background thread using explicit threading."""
     global conversion_status
 
     conversion_status['is_running'] = True
     conversion_status['current'] = 0
     conversion_status['total'] = len(conversions)
-    conversion_status['completed'] = []
-    conversion_status['failed'] = []
-
-    for i, conv in enumerate(conversions, 1):
-        conversion_status['current'] = i
-        conversion_status['current_video'] = conv['name']
-        conversion_status['progress'] = int((i / len(conversions)) * 100)
-
+    conversion_status['completed'] = []  # type: ignore
+    conversion_status['failed'] = []  # type: ignore
+    
+    status_lock = threading.Lock()
+    
+    def process_single(i, conv):
+        global conversion_status
+        with status_lock:
+            conversion_status['current_video'] = conv['name']
+            
         success, filename, file_size = convert_m3u8_to_mp4(
             conv['name'],
             conv['url'],
-            output_dir
+            output_dir,
+            resolution=conv.get('resolution'),
+            start_time=conv.get('start_time'),
+            end_time=conv.get('end_time')
         )
 
-        if success:
-            conversion_status['completed'].append({
-                'name': conv['name'],
-                'filename': filename,
-                'size': f"{file_size:.2f} MB"
-            })
-        else:
-            conversion_status['failed'].append(conv['name'])
+        with status_lock:
+
+            curr = int(conversion_status.get('current', 0)) + 1
+            tot = int(conversion_status.get('total', 1))
+            conversion_status['current'] = curr
+            conversion_status['progress'] = int((curr / tot) * 100)
+            
+            if success:
+                comp_list = conversion_status.get('completed', [])
+                if isinstance(comp_list, list):
+                    comp_list.append({
+                        'name': conv['name'],
+                        'filename': filename,
+                        'size': f"{file_size:.2f} MB"
+                    })
+            else:
+                fail_list = conversion_status.get('failed', [])
+                if isinstance(fail_list, list):
+                    fail_list.append(conv['name'])
+
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(process_single, i, conv): conv for i, conv in enumerate(conversions, 1)}
+        concurrent.futures.wait(futures)
 
     conversion_status['is_running'] = False
     conversion_status['progress'] = 100
@@ -194,28 +239,45 @@ def upload_file():
         with open(filepath, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f, delimiter=delimiter)
 
+            # Strip whitespace from fieldnames to handle cases like " Title" or " Link"
+            fieldnames = [str(x).strip() for x in reader.fieldnames] if reader.fieldnames else []
+            reader.fieldnames = fieldnames
+
             # Check for simple format with single Topic column
-            if 'Topic' in reader.fieldnames and 'Link' in reader.fieldnames and 'Topic 1' not in reader.fieldnames:
+            if fieldnames and 'Topic' in fieldnames and 'Link' in fieldnames and 'Topic 1' not in fieldnames:
                 # Simple format: Course, Title, Topic, Link (one video per row)
                 for row in reader:
-                    topic = row.get('Topic', '').strip()
-                    link = row.get('Link', '').strip()
+                    # Strip all keys in the row dict to handle spacing
+                    clean_row = {str(k).strip(): v for k, v in row.items()}
+                    topic = clean_row.get('Topic', '').strip()
+                    link = clean_row.get('Link', '').strip()
+                    res = clean_row.get('Resolution', '').strip() or None
+                    start = clean_row.get('Start Time', '').strip() or None
+                    end = clean_row.get('End Time', '').strip() or None
 
                     if topic and link:
                         conversions.append({
                             'name': topic,
-                            'url': link
+                            'url': link,
+                            'resolution': res,
+                            'start_time': start,
+                            'end_time': end
                         })
 
             # Check for complex format with Topic 1, Topic 2
-            elif 'Topic 1' in reader.fieldnames:
+            elif fieldnames and 'Topic 1' in fieldnames:
                 # New format: Course, Title, Track, POC, Topic 1, Link-1, Link-2, Topic 2, Link-1, Link-2
                 for row in reader:
+                    clean_row = {str(k).strip(): v for k, v in row.items()}
+                    res = clean_row.get('Resolution', '').strip() or None
+                    start = clean_row.get('Start Time', '').strip() or None
+                    end = clean_row.get('End Time', '').strip() or None
+                    
                     # Process Topic 1
-                    topic1 = row.get('Topic 1', '').strip()
+                    topic1 = clean_row.get('Topic 1', '').strip()
                     if topic1:
                         # Get Link-1 for Topic 1 (column index after Topic 1)
-                        link1_col = list(reader.fieldnames).index('Topic 1') + 1
+                        link1_col = list(fieldnames).index('Topic 1') + 1
                         link2_col = link1_col + 1
 
                         link1 = row.get(reader.fieldnames[link1_col], '').strip() if link1_col < len(reader.fieldnames) else ''
@@ -224,43 +286,63 @@ def upload_file():
                         if link1:
                             conversions.append({
                                 'name': f"{topic1} 1",
-                                'url': link1
+                                'url': link1,
+                                'resolution': res,
+                                'start_time': start,
+                                'end_time': end
                             })
                         if link2:
                             conversions.append({
                                 'name': f"{topic1} 2",
-                                'url': link2
+                                'url': link2,
+                                'resolution': res,
+                                'start_time': start,
+                                'end_time': end
                             })
 
                     # Process Topic 2
-                    topic2 = row.get('Topic 2', '').strip()
+                    topic2 = clean_row.get('Topic 2', '').strip()
                     if topic2:
                         # Get Link-1 for Topic 2 (column index after Topic 2)
-                        topic2_idx = list(reader.fieldnames).index('Topic 2')
+                        topic2_idx = list(fieldnames).index('Topic 2')
                         link1_col = topic2_idx + 1
                         link2_col = link1_col + 1
 
-                        link1 = row.get(reader.fieldnames[link1_col], '').strip() if link1_col < len(reader.fieldnames) else ''
-                        link2 = row.get(reader.fieldnames[link2_col], '').strip() if link2_col < len(reader.fieldnames) else ''
+                        link1 = clean_row.get(fieldnames[link1_col], '').strip() if link1_col < len(fieldnames) else ''
+                        link2 = clean_row.get(fieldnames[link2_col], '').strip() if link2_col < len(fieldnames) else ''
 
                         if link1:
                             conversions.append({
                                 'name': f"{topic2} 1",
-                                'url': link1
+                                'url': link1,
+                                'resolution': res,
+                                'start_time': start,
+                                'end_time': end
                             })
                         if link2:
                             conversions.append({
                                 'name': f"{topic2} 2",
-                                'url': link2
+                                'url': link2,
+                                'resolution': res,
+                                'start_time': start,
+                                'end_time': end
                             })
 
             # Check for old format
-            elif 'session name' in reader.fieldnames and 'session link' in reader.fieldnames:
+            elif fieldnames and 'session name' in fieldnames and 'session link' in fieldnames:
                 for row in reader:
-                    name = row.get('session name', '').strip()
-                    url = row.get('session link', '').strip()
+                    clean_row = {str(k).strip(): v for k, v in row.items()}
+                    name = clean_row.get('session name', '').strip()
+                    url = clean_row.get('session link', '').strip()
+                    res = clean_row.get('Resolution', '').strip() or None
+                    start = clean_row.get('Start Time', '').strip() or None
+                    end = clean_row.get('End Time', '').strip() or None
+                    
                     if name and url:
-                        conversions.append({'name': name, 'url': url})
+                        conversions.append({
+                            'name': name, 'url': url,
+                            'resolution': res, 'start_time': start, 'end_time': end
+                        })
 
             else:
                 # Fallback: Try using first two columns
@@ -270,9 +352,17 @@ def upload_file():
 
                 for row in reader:
                     if len(row) >= 2 and row[1].strip():
+                        # In fallback, try getting columns 2, 3, 4 for res, start, end if they exist
+                        res = row[2].strip() if len(row) > 2 else None
+                        start = row[3].strip() if len(row) > 3 else None
+                        end = row[4].strip() if len(row) > 4 else None
+                        
                         conversions.append({
                             'name': row[0].strip(),
-                            'url': row[1].strip()
+                            'url': row[1].strip(),
+                            'resolution': res,
+                            'start_time': start,
+                            'end_time': end
                         })
 
     except Exception as e:
@@ -288,10 +378,16 @@ def upload_file():
     if not conversions:
         return jsonify({'error': 'No valid entries found in CSV'}), 400
 
+    # Get concurrency setting from form, default to 3
+    try:
+        max_workers = int(request.form.get('concurrency', 3))
+    except ValueError:
+        max_workers = 3
+
     # Start conversion in background thread
     thread = threading.Thread(
         target=process_conversions,
-        args=(conversions, app.config['OUTPUT_FOLDER'])
+        args=(conversions, app.config['OUTPUT_FOLDER'], max_workers)
     )
     thread.daemon = True
     thread.start()
@@ -306,6 +402,29 @@ def upload_file():
 def get_status():
     """Get current conversion status."""
     return jsonify(conversion_status)
+
+
+@app.route('/download-template')
+def download_template():
+    """Download an example formatted CSV template."""
+    import io
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['session name', 'session link', 'Resolution', 'Start Time', 'End Time'])
+    writer.writerow(['Example Video', 'https://video.gumlet.io/.../main.m3u8', '1080p', '00:00:10', '00:00:15'])
+    writer.writerow(['Full Local Stream', 'file://$(pwd)/local_playlist.m3u8', '', '', ''])
+    
+    # Needs to be a byte stream for send_file
+    mem = io.BytesIO()
+    mem.write(output.getvalue().encode('utf-8'))
+    mem.seek(0)
+    
+    return send_file(
+        mem,
+        mimetype='text/csv',
+        download_name='template_m3u8_converter.csv',
+        as_attachment=True
+    )
 
 
 @app.route('/download/<filename>')
@@ -351,10 +470,10 @@ def download_all():
 if __name__ == '__main__':
     port = 8080
     print("\n" + "=" * 60)
-    print("🎥 M3U8 to MP4 Converter Server")
+    print("M3U8 to MP4 Converter Server")
     print("=" * 60)
-    print(f"\n🌐 Server starting at: http://localhost:{port}")
-    print("📂 Upload your CSV file and start converting!")
-    print("\n⚠️  Press CTRL+C to stop the server\n")
+    print(f"\nServer starting at: http://localhost:{port}")
+    print("Upload your CSV file and start converting!")
+    print("\nPress CTRL+C to stop the server\n")
 
     app.run(debug=True, host='0.0.0.0', port=port)

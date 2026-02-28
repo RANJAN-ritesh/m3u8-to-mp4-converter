@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>M3U8 to MP4 Converter</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667eea' stroke-width='2'><rect x='2' y='2' width='20' height='20' rx='2.18' ry='2.18'/><line x1='7' y1='2' x2='7' y2='22'/><line x1='17' y1='2' x2='17' y2='22'/><line x1='2' y1='12' x2='22' y2='12'/></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667eea' stroke-width='2'><rect x='2' y='2' width='20' height='20' rx='2.18' ry='2.18'/><line x1='7' y1='2' x2='7' y2='22'/><line x1='17' y1='2' x2='17' y2='22'/><line x1='2' y1='12' x2='22' y2='12'/></svg>">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -30,9 +33,26 @@
             <!-- Upload Section -->
             <div id="upload-section" class="card">
                 <h2>Add Your Videos</h2>
-                <p class="instruction">
-                    CSV Format: <strong>Course, Title, Topic, Link</strong> (one video per row)
-                </p>
+                <div class="template-download-container" style="text-align: center; margin-bottom: 24px;">
+                    <a href="/download-template" class="template-link" title="Download formatted template CSV">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Download CSV Template
+                    </a>
+                </div>
+
+                <details class="advanced-settings-panel">
+                    <summary>Advanced Settings</summary>
+                    <div class="advanced-content">
+                        <div class="setting-group">
+                            <label for="concurrency-input">Concurrent Downloads:</label>
+                            <input type="number" id="concurrency-input" min="1" max="10" value="3">
+                        </div>
+                    </div>
+                </details>
 
                 <!-- Toggle between Upload and Paste -->
                 <div class="input-toggle">
@@ -81,10 +101,8 @@
 
                 <!-- Paste Area -->
                 <div id="paste-mode" class="input-mode" style="display: none;">
-                    <textarea
-                        id="csv-textarea"
-                        class="csv-textarea"
-                        placeholder="Paste your CSV here...&#10;&#10;Example:&#10;Course,Title,Topic,Link&#10;1,JavaScript 101,Programming Foundation with JS,https://video.gumlet.io/.../main.m3u8&#10;2,JavaScript 101,Mathematical Operator,https://video.gumlet.io/.../main.m3u8"
+                    <textarea id="csv-textarea" class="csv-textarea"
+                        placeholder="session name,session link,Resolution,Start Time,End Time&#10;My Video,https://video.gumlet.io/.../main.m3u8,1080p,00:00:10,00:00:15"
                         rows="10"></textarea>
                     <div class="paste-info">
                         <span id="paste-count">0 videos detected</span>
@@ -119,7 +137,8 @@
             <!-- Results Section -->
             <div id="results-section" class="card" style="display: none;">
                 <h2>
-                    <svg class="inline-icon success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg class="inline-icon success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                     Conversion Complete!
@@ -165,4 +184,5 @@
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
+
 </html>

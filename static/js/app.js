@@ -11,6 +11,7 @@ const fileInfo = document.getElementById('file-info');
 const fileName = document.getElementById('file-name');
 const removeFileBtn = document.getElementById('remove-file');
 const convertBtn = document.getElementById('convert-btn');
+const concurrencyInput = document.getElementById('concurrency-input');
 
 const toggleUploadBtn = document.getElementById('toggle-upload');
 const togglePasteBtn = document.getElementById('toggle-paste');
@@ -91,7 +92,12 @@ function switchMode(mode) {
         pasteMode.style.display = 'block';
         uploadMode.style.display = 'none';
 
-        // Enable button if CSV is pasted
+        // Pre-fill headers if the box is empty to guide the user gracefully
+        if (csvTextarea.value.trim() === '') {
+            csvTextarea.value = 'session name,session link,Resolution,Start Time,End Time\n';
+        }
+
+        // Enable button if CSV is pasted (more than just headers)
         convertBtn.disabled = !pastedCSV;
     }
 }
@@ -166,6 +172,12 @@ async function startConversion() {
 
     convertBtn.disabled = true;
     convertBtn.textContent = 'Starting...';
+
+    // Add advanced settings
+    const concurrency = document.getElementById('concurrency-input');
+    if (concurrency) {
+        formData.append('concurrency', concurrency.value);
+    }
 
     try {
         const response = await fetch('/upload', {

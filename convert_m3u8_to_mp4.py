@@ -13,63 +13,58 @@ import re
 
 
 def sanitize_filename(filename):
-    """Remove or replace characters that are invalid in filenames."""
-    # Remove or replace invalid characters
     filename = re.sub(r'[<>:"/\\|?*]', '', filename)
-    # Replace spaces with underscores
     filename = filename.replace(' ', '_')
-    # Remove leading/trailing dots and spaces
     filename = filename.strip('. ')
     return filename
 
 
-def convert_m3u8_to_mp4(session_name, m3u8_url, output_dir='output'):
-    """
-    Convert a single m3u8 URL to mp4 using ffmpeg.
+import concurrent.futures
+import threading
 
-    Args:
-        session_name: Name for the output file
-        m3u8_url: URL of the m3u8 playlist
-        output_dir: Directory to save the output files
-
-    Returns:
-        bool: True if successful, False otherwise
-    """
-    # Create output directory if it doesn't exist
+def convert_m3u8_to_mp4(session_name, m3u8_url, output_dir='output', resolution=None, start_time=None, end_time=None):
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # Sanitize the session name for use as filename
     safe_name = sanitize_filename(session_name)
     output_file = os.path.join(output_dir, f"{safe_name}.mp4")
 
-    # Check if file already exists
     if os.path.exists(output_file):
-        print(f"⚠️  File already exists: {output_file}")
-        user_input = input("Overwrite? (y/n): ").lower()
-        if user_input != 'y':
-            print(f"⏭️  Skipping {session_name}")
-            return True
+        return True, "Already exists"
 
-    print(f"\n🔄 Converting: {session_name}")
-    print(f"   Source: {m3u8_url}")
-    print(f"   Output: {output_file}")
+    cmd = ['ffmpeg']
 
-    # ffmpeg command
-    # -i: input URL
-    # -c copy: copy codec (no re-encoding, faster)
-    # -bsf:a aac_adtstoasc: fix AAC bitstream
-    # -y: overwrite output file
-    cmd = [
-        'ffmpeg',
-        '-i', m3u8_url,
+    if start_time:
+        cmd.extend(['-ss', str(start_time)])
+    if end_time:
+        if start_time:
+            try:
+                def to_sec(t):
+                    parts = list(map(float, str(t).split(':')))
+                    if len(parts) == 3: return parts[0]*3600 + parts[1]*60 + parts[2]
+                    elif len(parts) == 2: return parts[0]*60 + parts[1]
+                    return parts[0]
+                dur = to_sec(end_time) - to_sec(start_time)
+                if dur > 0:
+                    cmd.extend(['-t', str(dur)])
+            except:
+                pass
+        else:
+            cmd.extend(['-to', str(end_time)])
+
+    cmd.extend(['-i', m3u8_url])
+
+    if resolution and resolution.lower() != 'highest':
+        if resolution.lower() == 'lowest':
+            cmd.extend(['-map', 'p:0'])
+
+    cmd.extend([
         '-c', 'copy',
         '-bsf:a', 'aac_adtstoasc',
         '-y',
         output_file
-    ]
+    ])
 
     try:
-        # Run ffmpeg with output suppressed (use stderr=subprocess.PIPE to see errors)
         result = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
@@ -78,26 +73,17 @@ def convert_m3u8_to_mp4(session_name, m3u8_url, output_dir='output'):
         )
 
         if result.returncode == 0:
-            file_size = os.path.getsize(output_file) / (1024 * 1024)  # Size in MB
-            print(f"✅ Success! File size: {file_size:.2f} MB")
-            return True
+            return True, None
         else:
-            print(f"❌ Error converting {session_name}")
-            print(f"   Error: {result.stderr[-500:]}")  # Print last 500 chars of error
-            return False
+            return False, result.stderr[-500:]
 
     except Exception as e:
-        print(f"❌ Exception occurred: {str(e)}")
-        return False
+        return False, str(e)
 
 
-def process_csv(csv_file, output_dir='output'):
+def process_csv(csv_file, output_dir='output', max_workers=3, default_resolution=None):
     """
     Process CSV file and convert all m3u8 links to mp4.
-
-    Args:
-        csv_file: Path to CSV file
-        output_dir: Directory to save output files
     """
     if not os.path.exists(csv_file):
         print(f"❌ CSV file not found: {csv_file}")
@@ -108,82 +94,128 @@ def process_csv(csv_file, output_dir='output'):
     conversions = []
 
     try:
+        # Try to dynamically detect delimiter based on first few lines
         with open(csv_file, 'r', encoding='utf-8') as f:
-            # Use csv.DictReader to handle header row
-            reader = csv.DictReader(f)
+            sample = f.read(1024)
+            f.seek(0)
+            try:
+                delimiter = csv.Sniffer().sniff(sample).delimiter
+            except:
+                delimiter = ',' if ',' in sample else '\t'
+                
+            reader = csv.DictReader(f, delimiter=delimiter)
+            
+            # Strip whitespace from fieldnames to handle cases like " Title" or " Link"
+            fieldnames = [str(x).strip() for x in reader.fieldnames] if reader.fieldnames else []
+            reader.fieldnames = fieldnames
 
-            # Check if required columns exist
-            if 'session name' not in reader.fieldnames or 'session link' not in reader.fieldnames:
-                # Try alternative column names
-                if len(reader.fieldnames) >= 2:
-                    print(f"⚠️  Expected columns 'session name' and 'session link'")
-                    print(f"   Found columns: {reader.fieldnames}")
-                    print(f"   Using first two columns as name and link")
-
-                    # Reset file pointer
-                    f.seek(0)
-                    reader = csv.reader(f)
-                    next(reader)  # Skip header
-
-                    for row in reader:
-                        if len(row) >= 2 and row[1].strip():
-                            conversions.append({
-                                'name': row[0].strip(),
-                                'url': row[1].strip()
-                            })
-                else:
-                    print(f"❌ Invalid CSV format. Expected at least 2 columns.")
-                    sys.exit(1)
-            else:
+            if 'session name' in fieldnames and 'session link' in fieldnames:
                 for row in reader:
-                    name = row.get('session name', '').strip()
-                    url = row.get('session link', '').strip()
-
+                    # Strip all keys in the row dict to handle spacing
+                    clean_row = {str(k).strip(): v for k, v in row.items()}
+                    name = clean_row.get('session name', '').strip()
+                    url = clean_row.get('session link', '').strip()
+                    res = clean_row.get('Resolution', '')
+                    res = res.strip() if res else default_resolution
+                    start = clean_row.get('Start Time', '')
+                    start = start.strip() if start else None
+                    end = clean_row.get('End Time', '')
+                    end = end.strip() if end else None
                     if name and url:
-                        conversions.append({'name': name, 'url': url})
+                        conversions.append({'name': name, 'url': url, 'resolution': res, 'start_time': start, 'end_time': end})
+            elif 'Topic' in fieldnames and 'Link' in fieldnames:
+                for row in reader:
+                    # Strip all keys in the row dict to handle spacing
+                    clean_row = {str(k).strip(): v for k, v in row.items()}
+                    name = clean_row.get('Topic', '').strip()
+                    url = clean_row.get('Link', '').strip()
+                    res = clean_row.get('Resolution', '')
+                    res = res.strip() if res else default_resolution
+                    start = clean_row.get('Start Time', '')
+                    start = start.strip() if start else None
+                    end = clean_row.get('End Time', '')
+                    end = end.strip() if end else None
+                    if name and url:
+                        conversions.append({'name': name, 'url': url, 'resolution': res, 'start_time': start, 'end_time': end})
+            else:
+                # Fallback: Try using first columns
+                f.seek(0)
+                reader = csv.reader(f, delimiter=delimiter)
+                next(reader)  # Skip header
+                for row in reader:
+                    if len(row) >= 2 and row[1].strip():
+                        res = row[2].strip() if len(row) > 2 else default_resolution
+                        start = row[3].strip() if len(row) > 3 else None
+                        end = row[4].strip() if len(row) > 4 else None
+                        conversions.append({
+                            'name': row[0].strip(),
+                            'url': row[1].strip(),
+                            'resolution': res,
+                            'start_time': start,
+                            'end_time': end
+                        })
 
     except Exception as e:
-        print(f"❌ Error reading CSV file: {str(e)}")
+        print(f"Error reading CSV file: {str(e)}")
         sys.exit(1)
 
     if not conversions:
-        print("❌ No valid entries found in CSV file")
+        print("No valid entries found in CSV file")
         sys.exit(1)
 
-    print(f"\n📊 Found {len(conversions)} video(s) to convert")
-    print(f"💾 Output directory: {output_dir}")
+    print(f"\nFound {len(conversions)} video(s) to convert using {max_workers} concurrent workers")
+    print(f"Output directory: {output_dir}")
     print("=" * 60)
 
-    # Process each conversion
-    successful = 0
-    failed = 0
+    counters = {'successful': 0, 'failed': 0, 'skipped': 0}
+    
+    lock = threading.Lock()
+    
+    def worker(conv, index, total):
+        print(f"[{index}/{total}] Starting: {conv['name']}")
+        
+        success, error_msg = convert_m3u8_to_mp4(
+            conv['name'], 
+            conv['url'], 
+            output_dir,
+            resolution=conv.get('resolution'),
+            start_time=conv.get('start_time'),
+            end_time=conv.get('end_time')
+        )
+        
+        with lock:
+            if success:
+                if error_msg == "Already exists":
+                    print(f"[{index}/{total}] Skipped {conv['name']} (Already exists)")
+                    counters['skipped'] += 1
+                else:
+                    print(f"[{index}/{total}] Success: {conv['name']}")
+                    counters['successful'] += 1
+            else:
+                print(f"[{index}/{total}] Failed: {conv['name']}\n   Error: {error_msg}")
+                counters['failed'] += 1
 
-    for i, conv in enumerate(conversions, 1):
-        print(f"\n[{i}/{len(conversions)}] ", end='')
-
-        if convert_m3u8_to_mp4(conv['name'], conv['url'], output_dir):
-            successful += 1
-        else:
-            failed += 1
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(worker, conv, i, len(conversions)): conv for i, conv in enumerate(conversions, 1)}
+        concurrent.futures.wait(futures)
 
     # Summary
     print("\n" + "=" * 60)
-    print(f"✨ Conversion complete!")
-    print(f"   Successful: {successful}")
-    print(f"   Failed: {failed}")
+    print(f"Conversion complete!")
+    print(f"   Successful: {counters['successful']}")
+    print(f"   Skipped (Exists): {counters['skipped']}")
+    print(f"   Failed: {counters['failed']}")
     print(f"   Total: {len(conversions)}")
-    print(f"\n📁 Output files saved in: {os.path.abspath(output_dir)}")
+    print(f"\nOutput files saved in: {os.path.abspath(output_dir)}")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python convert_m3u8_to_mp4.py <csv_file> [output_directory]")
-        print("\nExample:")
-        print("  python convert_m3u8_to_mp4.py sessions.csv")
-        print("  python convert_m3u8_to_mp4.py sessions.csv ./videos")
-        sys.exit(1)
+    import argparse
+    parser = argparse.ArgumentParser(description="M3U8 to MP4 Converter")
+    parser.add_argument("csv_file", help="Path to the input CSV file")
+    parser.add_argument("output_dir", nargs="?", default="output", help="Directory to save output files")
+    parser.add_argument("--workers", type=int, default=3, help="Number of concurrent downloads (default: 3)")
+    parser.add_argument("--resolution", help="Resolution to use (e.g. '1080p', 'Highest', 'Lowest')")
 
-    csv_file = sys.argv[1]
-    output_dir = sys.argv[2] if len(sys.argv) > 2 else 'output'
-
-    process_csv(csv_file, output_dir)
+    args = parser.parse_args()
+    process_csv(args.csv_file, args.output_dir, max_workers=args.workers, default_resolution=args.resolution)
