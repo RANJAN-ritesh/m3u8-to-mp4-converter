@@ -1,6 +1,6 @@
 # M3U8 to MP4 Converter
 
-A robust, web-based utility designed for the seamless conversion of M3U8 video streams and local playlists into universally compatible MP4 formats. Optimized for batch processing, the application offers an intuitive interface tailored for speed and efficiency.
+A web-based utility designed for the seamless conversion of M3U8 video streams and local playlists into universally compatible MP4 formats. Optimized for batch processing, the application offers an intuitive interface tailored for speed and efficiency.
 
 ## Key Features
 
